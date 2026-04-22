@@ -109,7 +109,7 @@ fun SettingsMainScreen() {
 
 		item {
 			ListButton(
-				leadingContent = { Icon(painterResource(R.drawable.ic_moonfin), contentDescription = null) },
+				leadingContent = { Icon(painterResource(R.drawable.app_icon_foreground), contentDescription = null) },
 				headingContent = { Text(stringResource(R.string.pref_plugin_settings)) },
 				captionContent = { Text(stringResource(R.string.pref_plugin_description)) },
 				onClick = { router.push(Routes.PLUGIN) }
@@ -174,7 +174,7 @@ fun SettingsMainScreen() {
 						)
 					},
 					headingContent = { Text("Check for Updates") },
-					captionContent = { Text("Download latest Moonfin version") },
+					captionContent = { Text("Download latest Tantzers version") },
 					onClick = {
 						checkForUpdates(context, updateChecker) { info ->
 							updateInfoForDialog = info
@@ -203,7 +203,7 @@ fun SettingsMainScreen() {
 						tint = Color.Red
 					)
 				},
-				headingContent = { Text("Support Moonfin") },
+				headingContent = { Text("Support Tantzers") },
 				captionContent = { Text("Help us continue development") },
 				onClick = {
 					showDonateDialog = true

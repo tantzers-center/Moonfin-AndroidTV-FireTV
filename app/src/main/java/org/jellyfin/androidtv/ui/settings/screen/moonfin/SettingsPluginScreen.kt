@@ -47,7 +47,7 @@ fun SettingsPluginScreen() {
 		item {
 			var pluginSyncEnabled by rememberPreference(userPreferences, UserPreferences.pluginSyncEnabled)
 			ListButton(
-				leadingContent = { Icon(painterResource(R.drawable.ic_moonfin), contentDescription = null) },
+				leadingContent = { Icon(painterResource(R.drawable.app_icon_foreground), contentDescription = null) },
 				headingContent = { Text(stringResource(R.string.pref_plugin_sync_enable)) },
 				captionContent = { Text(stringResource(R.string.pref_plugin_sync_description)) },
 				trailingContent = { Checkbox(checked = pluginSyncEnabled) },
@@ -142,5 +142,4 @@ fun SettingsPluginScreen() {
 		}
 	}
 }
-
 

@@ -72,7 +72,7 @@ class ServerUserRepositoryImpl(
 		return try {
 			val tempClient = EmbyApiClient(
 				appVersion = "1.0.0",
-				clientName = "Moonfin",
+				clientName = "Tantzers",
 				deviceId = embyApiClient.deviceId,
 				deviceName = "AndroidTV",
 			)
