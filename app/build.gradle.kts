@@ -84,7 +84,7 @@ android {
 			resValue("string", "app_search_suggest_intent_data", "content://${defaultConfig.applicationId}.content/intent")
 
 			// Set flavored application name
-			resValue("string", "app_name", "Moonfin")
+			resValue("string", "app_name", "Tantzers")
 
 			buildConfigField("boolean", "DEVELOPMENT", "false")
 		}
@@ -103,7 +103,7 @@ android {
 			resValue("string", "app_search_suggest_intent_data", "content://${debugAppId}.content/intent")
 
 			// Set flavored application name
-			resValue("string", "app_name", "Moonfin Debug")
+			resValue("string", "app_name", "Tantzers Debug")
 
 			buildConfigField("boolean", "DEVELOPMENT", (defaultConfig.versionCode!! < 100).toString())
 		}

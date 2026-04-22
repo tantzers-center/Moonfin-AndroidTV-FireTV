@@ -85,6 +85,7 @@ fun DetailActionButton(
 	detail: String? = null,
 	isActive: Boolean = false,
 	activeColor: Color = Color.Unspecified,
+	fullWidth: Boolean = false,
 ) {
 	val interactionSource = remember { MutableInteractionSource() }
 	val isFocused by interactionSource.collectIsFocusedAsState()
@@ -94,7 +95,7 @@ fun DetailActionButton(
 
 	Column(
 		horizontalAlignment = Alignment.CenterHorizontally,
-		modifier = modifier.width(80.dp),
+		modifier = if (fullWidth) modifier.fillMaxWidth() else modifier.width(80.dp),
 	) {
 		IconButton(
 			onClick = onClick,
@@ -107,31 +108,54 @@ fun DetailActionButton(
 			),
 			contentPadding = PaddingValues(16.dp),
 			interactionSource = interactionSource,
-			modifier = Modifier.border(
+			modifier = (if (fullWidth) Modifier.fillMaxWidth() else Modifier).border(
 				1.dp,
 				Color.White.copy(alpha = 0.15f),
 				RoundedCornerShape(14.dp),
 			),
 		) {
-			Icon(
-				imageVector = icon,
-				contentDescription = label,
-				modifier = Modifier.size(22.dp),
+			if (fullWidth) {
+				Row(
+					horizontalArrangement = Arrangement.spacedBy(10.dp),
+					verticalAlignment = Alignment.CenterVertically,
+				) {
+					Icon(
+						imageVector = icon,
+						contentDescription = label,
+						modifier = Modifier.size(22.dp),
+					)
+					Text(
+						text = label,
+						fontSize = 16.sp,
+						fontWeight = FontWeight.W800,
+						color = if (isFocused) focusContentColor else Color.White,
+						textAlign = TextAlign.Center,
+						maxLines = 1,
+					)
+				}
+			} else {
+				Icon(
+					imageVector = icon,
+					contentDescription = label,
+					modifier = Modifier.size(22.dp),
+				)
+			}
+		}
+
+		if (!fullWidth) {
+			Spacer(modifier = Modifier.height(6.dp))
+
+			Text(
+				text = label,
+				fontSize = 12.sp,
+				fontWeight = FontWeight.W600,
+				color = Color.White.copy(alpha = 0.8f),
+				textAlign = TextAlign.Center,
+				maxLines = 1,
 			)
 		}
 
-		Spacer(modifier = Modifier.height(6.dp))
-
-		Text(
-			text = label,
-			fontSize = 12.sp,
-			fontWeight = FontWeight.W600,
-			color = Color.White.copy(alpha = 0.8f),
-			textAlign = TextAlign.Center,
-			maxLines = 1,
-		)
-
-		if (detail != null) {
+		if (!fullWidth && detail != null) {
 			Text(
 				text = detail,
 				fontSize = 11.sp,

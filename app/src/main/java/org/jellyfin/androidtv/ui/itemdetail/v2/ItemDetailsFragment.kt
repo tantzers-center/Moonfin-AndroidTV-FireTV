@@ -101,7 +101,6 @@ import org.jellyfin.androidtv.ui.playback.MediaManager
 import org.jellyfin.androidtv.ui.playback.PlaybackLauncher
 import org.jellyfin.androidtv.ui.playback.PrePlaybackTrackSelector
 import org.jellyfin.androidtv.ui.playback.ThemeMusicPlayer
-import org.jellyfin.androidtv.ui.playlist.showAddToPlaylistDialog
 import org.jellyfin.androidtv.ui.shared.toolbar.LeftSidebarNavigation
 import org.jellyfin.androidtv.ui.shared.toolbar.Navbar
 import org.jellyfin.androidtv.ui.shared.toolbar.NavbarActiveButton
@@ -117,7 +116,6 @@ import org.jellyfin.androidtv.util.apiclient.itemImages
 import org.jellyfin.androidtv.util.apiclient.parentBackdropImages
 import org.jellyfin.androidtv.util.apiclient.seriesPrimaryImage
 import org.jellyfin.androidtv.util.sdk.TrailerUtils.getExternalTrailerIntent
-import org.jellyfin.androidtv.util.sdk.TrailerUtils.hasPlayableTrailers
 import org.jellyfin.androidtv.util.sdk.compat.canResume
 import org.jellyfin.sdk.api.client.exception.ApiClientException
 import org.jellyfin.sdk.api.client.extensions.imageApi
@@ -127,7 +125,6 @@ import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
-import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.androidtv.ui.settings.compat.SettingsViewModel
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
@@ -1150,11 +1147,6 @@ class ItemDetailsFragment : Fragment() {
 		playButtonFocusRequester: FocusRequester,
 	) {
 		val hasPlaybackPosition = item.canResume
-		val mediaSources = item.mediaSources
-		val selectedSource = mediaSources?.getOrNull(uiState.selectedMediaSourceIndex) ?: mediaSources?.firstOrNull()
-		val audioStreams = selectedSource?.mediaStreams?.filter { it.type == MediaStreamType.AUDIO } ?: emptyList()
-		val subtitleStreams = selectedSource?.mediaStreams?.filter { it.type == MediaStreamType.SUBTITLE } ?: emptyList()
-		val hasMultipleVersions = (mediaSources?.size ?: 0) > 1
 		val canPlay = item.type in listOf(
 			BaseItemKind.MOVIE, BaseItemKind.EPISODE, BaseItemKind.VIDEO,
 			BaseItemKind.RECORDING, BaseItemKind.TRAILER, BaseItemKind.MUSIC_VIDEO,
@@ -1162,233 +1154,29 @@ class ItemDetailsFragment : Fragment() {
 			BaseItemKind.MUSIC_ALBUM, BaseItemKind.PLAYLIST, BaseItemKind.MUSIC_ARTIST,
 		)
 
-		// Dialog state
-		var showAudioDialog by remember { mutableStateOf(false) }
-		var showSubtitleDialog by remember { mutableStateOf(false) }
-		var showVersionDialog by remember { mutableStateOf(false) }
+		if (!canPlay) return
 
 		Row(
 			modifier = Modifier.fillMaxWidth(),
 			horizontalArrangement = Arrangement.Center,
 		) {
-			Row(
-				horizontalArrangement = Arrangement.spacedBy(16.dp),
-			) {
-				if (hasPlaybackPosition && canPlay) {
-					DetailActionButton(
-						label = stringResource(R.string.lbl_resume_from,
-							item.userData?.playbackPositionTicks?.let { formatDuration(it) } ?: ""),
-						icon = ImageVector.vectorResource(R.drawable.ic_play),
-						onClick = { handleResume(item) },
-						modifier = Modifier.focusRequester(playButtonFocusRequester),
+			DetailActionButton(
+				label = if (hasPlaybackPosition) {
+					stringResource(
+						R.string.lbl_resume_from,
+						item.userData?.playbackPositionTicks?.let { formatDuration(it) } ?: "",
 					)
-				}
-
-				if (canPlay) {
-					DetailActionButton(
-						label = if (hasPlaybackPosition) {
-							stringResource(R.string.lbl_restart)
-						} else stringResource(R.string.lbl_play),
-						icon = if (hasPlaybackPosition)
-							ImageVector.vectorResource(R.drawable.ic_loop)
-						else
-							ImageVector.vectorResource(R.drawable.ic_play),
-						onClick = { handlePlay(item, uiState) },
-						modifier = if (!hasPlaybackPosition) Modifier.focusRequester(playButtonFocusRequester) else Modifier,
-					)
-				}
-
-				if ((item.isFolder == true || item.type == BaseItemKind.MUSIC_ARTIST) && item.type != BaseItemKind.BOX_SET) {
-					DetailActionButton(
-						label = stringResource(R.string.lbl_shuffle),
-						icon = ImageVector.vectorResource(R.drawable.ic_shuffle),
-						onClick = { handleShuffle(item) },
-					)
-				}
-
-				if (item.type == BaseItemKind.MUSIC_ARTIST) {
-					DetailActionButton(
-						label = stringResource(R.string.lbl_instant_mix),
-						icon = ImageVector.vectorResource(R.drawable.ic_mix),
-						onClick = { playbackHelper.playInstantMix(requireContext(), item) },
-					)
-				}
-
-				if (hasMultipleVersions) {
-					DetailActionButton(
-						label = stringResource(R.string.select_version),
-						icon = ImageVector.vectorResource(R.drawable.ic_guide),
-						onClick = { showVersionDialog = true },
-					)
-				}
-
-				if (audioStreams.size > 1) {
-					DetailActionButton(
-						label = stringResource(R.string.pref_audio),
-						icon = ImageVector.vectorResource(R.drawable.ic_select_audio),
-						onClick = { showAudioDialog = true },
-					)
-				}
-
-				if (subtitleStreams.isNotEmpty()) {
-					DetailActionButton(
-						label = stringResource(R.string.pref_subtitles),
-						icon = ImageVector.vectorResource(R.drawable.ic_select_subtitle),
-						onClick = { showSubtitleDialog = true },
-					)
-				}
-
-				if (hasPlayableTrailers(requireContext(), item)) {
-					DetailActionButton(
-						label = stringResource(R.string.lbl_trailer),
-						icon = ImageVector.vectorResource(R.drawable.ic_trailer),
-						onClick = { playTrailers(item) },
-					)
-				}
-
-				if (item.userData != null && item.type != BaseItemKind.PERSON && item.type != BaseItemKind.MUSIC_ARTIST) {
-						DetailActionButton(
-						label = if (item.userData?.played == true) {
-							stringResource(R.string.lbl_watched)
-						} else stringResource(R.string.lbl_unwatched),
-						icon = ImageVector.vectorResource(R.drawable.ic_check),
-						onClick = { viewModel.toggleWatched() },
-						isActive = item.userData?.played == true,
-						activeColor = Color(0xFF2196F3),
-					)
-				}
-
-				if (item.userData != null) {
-					DetailActionButton(
-						label = stringResource(R.string.lbl_favorite),
-						icon = ImageVector.vectorResource(R.drawable.ic_heart),
-						onClick = { viewModel.toggleFavorite() },
-						isActive = item.userData?.isFavorite == true,
-						activeColor = Color(0xFFFF4757),
-					)
-				}
-
-				if (item.userData != null && item.type != BaseItemKind.PERSON) {
-					DetailActionButton(
-						label = stringResource(R.string.lbl_playlist),
-						icon = ImageVector.vectorResource(R.drawable.ic_add),
-						onClick = { showAddToPlaylistDialog(requireContext(), item.id) },
-					)
-				}
-
-				if (item.type == BaseItemKind.EPISODE && item.seriesId != null) {
-					DetailActionButton(
-						label = stringResource(R.string.lbl_goto_series),
-						icon = ImageVector.vectorResource(R.drawable.ic_tv),
-						onClick = {
-							item.seriesId?.let { seriesId ->
-								navigationRepository.navigate(Destinations.itemDetails(seriesId, viewModel.serverId))
-							}
-						},
-					)
-				}
-
-				if (item.canDelete == true) {
-					DetailActionButton(
-						label = stringResource(R.string.lbl_delete),
-						icon = ImageVector.vectorResource(R.drawable.ic_delete),
-						onClick = { confirmDeleteItem(item) },
-					)
-				}
-			}
-		}
-
-		// Audio track selector dialog
-		if (showAudioDialog) {
-			val audioTracks = trackSelector.getAudioTracks(item)
-			if (audioTracks.isEmpty()) {
-				val missingTrackText = stringResource(R.string.lbl_audio_track_missing)
-				LaunchedEffect(Unit) {
-					Toast.makeText(requireContext(), missingTrackText, Toast.LENGTH_SHORT).show()
-					showAudioDialog = false
-				}
-			} else {
-				val selectedAudioIndex = trackSelector.getSelectedAudioTrack(item.id.toString())
-				val trackNames = audioTracks.map { trackSelector.getAudioTrackDisplayName(it) } + listOf("Default")
-				val checkedIndex = audioTracks.indexOfFirst { it.index == selectedAudioIndex }
-					.let { if (it == -1) trackNames.size - 1 else it }
-
-				val prefAudioText = stringResource(R.string.pref_audio)
-				val defaultText = stringResource(R.string.lbl_default)
-				TrackSelectorDialog(
-					title = stringResource(R.string.lbl_audio_track_title),
-					options = trackNames,
-					selectedIndex = checkedIndex,
-					onSelect = { which ->
-						if (which < audioTracks.size) {
-							val track = audioTracks[which]
-							trackSelector.setSelectedAudioTrack(item.id.toString(), track.index)
-							Toast.makeText(requireContext(), "$prefAudioText: ${trackSelector.getAudioTrackDisplayName(track)}", Toast.LENGTH_SHORT).show()
-						} else {
-							trackSelector.setSelectedAudioTrack(item.id.toString(), null)
-							Toast.makeText(requireContext(), "$prefAudioText: $defaultText", Toast.LENGTH_SHORT).show()
-						}
-						showAudioDialog = false
-					},
-					onDismiss = { showAudioDialog = false },
-				)
-			}
-		}
-
-		// Subtitle track selector dialog
-		if (showSubtitleDialog) {
-			val subtitleTracks = trackSelector.getSubtitleTracks(item)
-			val selectedSubIndex = trackSelector.getSelectedSubtitleTrack(item.id.toString())
-			val trackNames = listOf("None") + subtitleTracks.map { trackSelector.getSubtitleTrackDisplayName(it) } + listOf("Default")
-			val checkedIndex = when {
-				selectedSubIndex == -1 -> 0
-				selectedSubIndex == null -> trackNames.size - 1
-				else -> subtitleTracks.indexOfFirst { it.index == selectedSubIndex }.let { if (it == -1) trackNames.size - 1 else it + 1 }
-			}
-
-			val defaultText = stringResource(R.string.lbl_default)
-			val subtitleText = stringResource(R.string.pref_subtitles)
-			val noneText = stringResource(R.string.home_section_none)
-			TrackSelectorDialog(
-				title = stringResource(R.string.lbl_subtitle_track_title),
-				options = trackNames,
-				selectedIndex = checkedIndex,
-				onSelect = { which ->
-					when (which) {
-						0 -> {
-							trackSelector.setSelectedSubtitleTrack(item.id.toString(), -1)
-							Toast.makeText(requireContext(), "$subtitleText: $noneText", Toast.LENGTH_SHORT).show()
-						}
-						trackNames.size - 1 -> {
-							trackSelector.setSelectedSubtitleTrack(item.id.toString(), null)
-							Toast.makeText(requireContext(), "$subtitleText: $defaultText", Toast.LENGTH_SHORT).show()
-						}
-						else -> {
-							val track = subtitleTracks[which - 1]
-							trackSelector.setSelectedSubtitleTrack(item.id.toString(), track.index)
-							Toast.makeText(requireContext(), "$subtitleText: ${trackSelector.getSubtitleTrackDisplayName(track)}", Toast.LENGTH_SHORT).show()
-						}
-					}
-					showSubtitleDialog = false
+				} else {
+					stringResource(R.string.lbl_play)
 				},
-				onDismiss = { showSubtitleDialog = false },
-			)
-		}
-
-		// Version selector dialog
-		if (showVersionDialog) {
-			val versions = item.mediaSources ?: emptyList()
-			val versionNames = versions.mapIndexed { i, source -> source.name ?: stringResource(R.string.lbl_version_number, i + 1) }
-
-			TrackSelectorDialog(
-				title = stringResource(R.string.select_version_title),
-				options = versionNames,
-				selectedIndex = uiState.selectedMediaSourceIndex,
-				onSelect = { which ->
-					viewModel.setSelectedMediaSource(which)
-					showVersionDialog = false
+				icon = ImageVector.vectorResource(R.drawable.ic_play),
+				onClick = {
+					if (hasPlaybackPosition) handleResume(item) else handlePlay(item, uiState)
 				},
-				onDismiss = { showVersionDialog = false },
+				modifier = Modifier
+					.fillMaxWidth()
+					.focusRequester(playButtonFocusRequester),
+				fullWidth = true,
 			)
 		}
 	}
